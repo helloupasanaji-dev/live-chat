@@ -41,7 +41,7 @@ const conversations = [
   { id: 6, name: 'Noah Williams', initials: 'NW', color: 'rose', preview: 'Got it, appreciate it!', time: '2h', unread: 0, online: false, email: 'noah.w@email.com', location: 'Chicago, US', plan: 'Pro plan', source: 'Website chat', topic: 'Account access', messages: [{ from: 'them', text: 'I’m locked out of my account.', time: '8:04 AM' }] },
 ]
 
-const state = { selectedId: '1', filter: 'all', search: '', resolved: false, mobilePanel: 'inbox', installOpen: false, domains: JSON.parse(localStorage.getItem('orbit-domains') || '[]'), siteId: localStorage.getItem('orbit-site-id') || crypto.randomUUID().slice(0, 8), liveConversations: [], backendError: '' }
+const state = { selectedId: '1', filter: 'all', search: '', resolved: false, mobilePanel: 'inbox', installOpen: false, siteId: localStorage.getItem('orbit-site-id') || crypto.randomUUID().slice(0, 8), liveConversations: [], backendError: '' }
 localStorage.setItem('orbit-site-id', state.siteId)
 const app = document.querySelector('#app')
 
@@ -74,12 +74,6 @@ async function initializeBackend() {
       return
     }
     state.backendError = ''
-    const site = await created.json()
-    if (!site.domains?.length && state.domains.length) {
-      const saved = await fetch(`/api/sites/${encodeURIComponent(state.siteId)}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ domains: state.domains }) })
-      if (saved.ok) state.domains = (await saved.json()).domains
-    } else state.domains = site.domains || []
-    localStorage.setItem('orbit-domains', JSON.stringify(state.domains))
     await refreshLiveConversations()
     setInterval(refreshLiveConversations, 4000)
   } catch { /* Keep the sample inbox available while the API is offline. */ }
@@ -133,7 +127,7 @@ function installDialog() {
   const scriptUrl = `${location.origin}/widget.js`
   const closeScriptTag = '<' + '/script>'
   const embed = `<script src="${scriptUrl}" data-site-id="${state.siteId}" async>${closeScriptTag}`
-  return `<div class="install-overlay" id="install-overlay"><section class="install-dialog" role="dialog" aria-modal="true" aria-labelledby="install-title"><header class="install-header"><div><div class="eyebrow">WEBSITE WIDGET</div><h2 id="install-title">Add live chat to your website</h2><p>Connect a domain, then paste one line of code into your site.</p></div><button class="icon-button" id="close-install" aria-label="Close">${icon('close')}</button></header>${state.backendError ? `<div class="api-warning" role="alert"><b>Chat API setup needed</b><span>${escapeHtml(state.backendError)}</span></div>` : ""}<div class="install-content"><div class="install-step"><span class="step-number">1</span><div class="step-body"><h3>Allow your website domain</h3><p>Only the domains listed here can show this chat widget.</p><form id="domain-form" class="domain-form"><span class="domain-prefix">https://</span><input id="domain-input" placeholder="yourwebsite.com" aria-label="Website domain" required /><button type="submit">Add domain</button></form><div class="domain-list">${state.domains.length ? state.domains.map((domain, index) => `<div class="domain-entry"><span class="domain-check">✓</span><span>${escapeHtml(domain)}</span><span class="domain-enabled">Allowed</span><button type="button" class="remove-domain" data-remove-domain="${index}" aria-label="Remove ${escapeHtml(domain)}">${icon('close', 14)}</button></div>`).join('') : '<div class="domain-empty">No domains yet. Add one to enable installation.</div>'}</div></div></div><div class="install-step"><span class="step-number">2</span><div class="step-body"><h3>Install your chat widget</h3><p>Paste this snippet before the closing <code>&lt;/body&gt;</code> tag on your website.</p><div class="snippet-box"><code>${escapeHtml(embed)}</code><button id="copy-embed" class="copy-embed">${icon('link', 14)} Copy code</button></div><div class="install-note"><span>✳</span><span>The widget will appear on <b>${state.domains.length ? state.domains.map(escapeHtml).join(', ') : 'your allowed domains'}</b> after you publish your website.</span></div></div></div></div><footer class="install-footer"><span>Site ID <code>${state.siteId}</code> · Domains are saved on the chat server</span><button class="done-button" id="done-install">Done</button></footer></section></div>`
+  return `<div class="install-overlay" id="install-overlay"><section class="install-dialog" role="dialog" aria-modal="true" aria-labelledby="install-title"><header class="install-header"><div><div class="eyebrow">WEBSITE WIDGET</div><h2 id="install-title">Add live chat to your website</h2><p>Paste one line of code into any website to install your chat.</p></div><button class="icon-button" id="close-install" aria-label="Close">${icon('close')}</button></header>${state.backendError ? `<div class="api-warning" role="alert"><b>Chat API setup needed</b><span>${escapeHtml(state.backendError)}</span></div>` : ""}<div class="install-content"><div class="install-step"><span class="step-number">1</span><div class="step-body"><h3>Any domain is supported</h3><p>Your widget can be installed on any website. No domain registration is required.</p><div class="install-note"><span>✳</span><span>Keep this site ID and embed snippet private to your workspace.</span></div></div></div><div class="install-step"><span class="step-number">2</span><div class="step-body"><h3>Install your chat widget</h3><p>Paste this snippet before the closing <code>&lt;/body&gt;</code> tag on your website.</p><div class="snippet-box"><code>${escapeHtml(embed)}</code><button id="copy-embed" class="copy-embed">${icon('link', 14)} Copy code</button></div><div class="install-note"><span>✳</span><span>Your widget will appear on any domain after you publish your website.</span></div></div></div></div><footer class="install-footer"><span>Site ID ${state.siteId} · Visitor access: any domain</span><button class="done-button" id="done-install">Done</button></footer></section></div>`
 }
 
 function escapeHtml(text) { return text.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) }
@@ -172,21 +166,6 @@ function bindEvents() {
   document.querySelector('#close-install')?.addEventListener('click', () => { state.installOpen = false; render() })
   document.querySelector('#done-install')?.addEventListener('click', () => { state.installOpen = false; render() })
   document.querySelector('#install-overlay')?.addEventListener('click', e => { if (e.target.id === 'install-overlay') { state.installOpen = false; render() } })
-  document.querySelector('#domain-form')?.addEventListener('submit', async e => {
-    e.preventDefault()
-    const input = document.querySelector('#domain-input')
-    const raw = input.value.trim().replace(/^https?:\/\//i, '').replace(/\/$/, '').toLowerCase()
-    const host = raw.split('/')[0].split(':')[0]
-    if (!/^(localhost|([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,})$/i.test(host)) { input.setCustomValidity('Enter a valid domain, such as yourwebsite.com'); input.reportValidity(); return }
-    input.setCustomValidity('')
-    const updatedDomains = state.domains.includes(host) ? state.domains : [...state.domains, host]
-    const response = await fetch(`/api/sites/${encodeURIComponent(state.siteId)}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ domains: updatedDomains }) })
-    if (!response.ok) { showToast('Could not save the domain. Is the chat server running?'); return }
-    state.domains = (await response.json()).domains
-    localStorage.setItem('orbit-domains', JSON.stringify(state.domains))
-    render()
-  })
-  document.querySelectorAll('[data-remove-domain]').forEach(button => button.addEventListener('click', async () => { const updatedDomains = state.domains.filter((_, index) => index !== Number(button.dataset.removeDomain)); const response = await fetch(`/api/sites/${encodeURIComponent(state.siteId)}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ domains: updatedDomains }) }); if (!response.ok) { showToast('Could not remove the domain.'); return }; state.domains = (await response.json()).domains; localStorage.setItem('orbit-domains', JSON.stringify(state.domains)); render() }))
   document.querySelector('#copy-embed')?.addEventListener('click', async e => { const script = `<script src="${location.origin}/widget.js" data-site-id="${state.siteId}" async>${'<' + '/script>'}`; try { await navigator.clipboard.writeText(script); e.currentTarget.innerHTML = `${icon('check', 14)} Copied`; setTimeout(() => { if (e.currentTarget.isConnected) e.currentTarget.innerHTML = `${icon('link', 14)} Copy code` }, 1500) } catch { showToast('Clipboard access is unavailable in this context') } })
   document.querySelector('.new-chat').addEventListener('click', () => showToast('New conversation started'))
   document.querySelector('.assign-button').addEventListener('click', e => { e.currentTarget.classList.toggle('assigned'); e.currentTarget.querySelector('span:nth-child(2)').textContent = e.currentTarget.classList.contains('assigned') ? 'Assigned to you' : 'Assign to me' })

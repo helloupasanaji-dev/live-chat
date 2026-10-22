@@ -27,7 +27,9 @@ function isDashboardRequest(request) {
 
 function allowedSiteOrigin(request, site) {
   const host = hostFrom(originFrom(request))
-  return Boolean(host && site.domains.some(domain => host === domain || host.endsWith(`.${domain}`)))
+  // Visitor access is open to any website. The public site ID still identifies
+  // the workspace, and visitor tokens protect access to each conversation.
+  return Boolean(host)
 }
 
 async function body(request) {

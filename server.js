@@ -54,11 +54,9 @@ function findSiteForRequest(request, siteId) {
   const site = store.sites[siteId]
   if (!site) return null
   const host = originHost(request)
-  // Vite's local dashboard is trusted for development. Production embed calls
-  // must come from an explicitly registered hostname.
-  if (host === 'localhost' || host === '127.0.0.1') return site
-  if (!host || !site.domains.some(domain => host === domain || host.endsWith(`.${domain}`))) return null
-  return site
+  // Visitor access is open to any website. The public site ID still identifies
+  // the workspace, and visitor tokens protect access to each conversation.
+  return host ? site : null
 }
 
 function publish(siteId, event) {
