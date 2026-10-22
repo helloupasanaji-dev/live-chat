@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "vite": "^6.0.0"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.39.0"
   }
 }

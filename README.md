@@ -22,6 +22,8 @@ npm run build
 npm start
 ```
 
-Put the server behind HTTPS and a public hostname before embedding it on other sites. If a reverse proxy changes the public hostname, set `APP_ORIGIN` to the dashboard's public origin (for example, `https://chat.example.com`). Set `PORT` if the host assigns the listening port.
+For Vercel, the app includes a serverless catch-all API in `api/[...path].js`. Add an Upstash Redis database to the Vercel project so domains and conversations persist across serverless requests. The integration must provide `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`; then redeploy. The API returns a clear setup error until both values are configured.
 
-This is a single-workspace MVP. It does not include user accounts, billing, team permissions, spam controls, or a managed database. Add authentication and tenant-level authorization before exposing the dashboard publicly; the JSON file store is for development and small deployments only.
+For a traditional Node host, `npm start` runs the file-backed API in `server.js`. Put the server behind HTTPS and a public hostname before embedding it on other sites. If a reverse proxy changes the public hostname, set `APP_ORIGIN` to the dashboard's public origin (for example, `https://chat.example.com`). Set `PORT` if the host assigns the listening port.
+
+This is a single-workspace MVP. It does not include user accounts, billing, team permissions, spam controls, or multi-tenant controls. Add authentication and tenant-level authorization before offering public customer accounts.
